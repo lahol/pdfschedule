@@ -1,0 +1,4 @@
+*.o
+*.pdf
+pdfschedule
+.clang_complete
