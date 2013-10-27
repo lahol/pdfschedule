@@ -35,6 +35,11 @@ GtkWidget *presenter_window = NULL;
 gint win_width = 0;
 gint win_height = 0;
 
+guint page_interval = 10;
+guint timeout_source = 0;
+gboolean main_next_page(gpointer data);
+void main_run_page_timer(guint interval);
+
 void main_setup_command_handlers(void)
 {
     cmd_add_command("set", command_set_handler);
@@ -98,6 +103,24 @@ void main_cleanup(void)
     cmd_cleanup();
 }
 
+gboolean main_next_page(gpointer data)
+{
+    page_cache_select_next_page();
+    main_refresh_display();
+
+    return TRUE;
+}
+
+void main_run_page_timer(guint interval)
+{
+    if (timeout_source > 0) {
+        g_source_remove(timeout_source);
+        timeout_source = 0;
+    }
+    if (interval > 0)
+        timeout_source = g_timeout_add_seconds(interval, main_next_page, NULL);
+}
+
 void main_render_window(cairo_t *cr, int width, int height)
 {
     cairo_surface_t *surf = NULL;
@@ -158,11 +181,13 @@ gint command_set_handler(gint argc, gchar **argv)
             return 0;
         }
     }
-    else if (g_strcmp0(argv[1], "time") == 0) {
+    else if (g_strcmp0(argv[1], "page-interval") == 0) {
         if (argc < 3)
             return 1;
-        guint timeout;
-        if (util_read_uint(&timeout, argv[2])) {
+        guint interval;
+        if (util_read_uint(&interval, argv[2])) {
+            page_interval = interval;
+            main_run_page_timer(page_interval);
             return 0;
         }
     }
@@ -183,6 +208,7 @@ gint command_pages_handler(gint argc, gchar **argv)
     }
 
     page_cache_select_first_page();
+    main_run_page_timer(page_interval);
 
     main_refresh_display();
 
