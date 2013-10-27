@@ -8,8 +8,11 @@
 #include "commands.h"
 #include "ipc.h"
 #include "utils.h"
+#include <pango/pangocairo.h>
+#include <time.h>
 
 void main_render_window(cairo_t *cr, int width, int height);
+void main_render_clock(cairo_t *cr);
 void main_set_fullscreen(gboolean fullscreen);
 void main_refresh_display(void);
 
@@ -39,6 +42,14 @@ guint page_interval = 10;
 guint timeout_source = 0;
 gboolean main_next_page(gpointer data);
 void main_run_page_timer(guint interval);
+
+GdkRGBA clock_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+gboolean clock_show = FALSE;
+guint clock_position_x = 0;
+guint clock_position_y = 0;
+gchar *clock_font = NULL;
+guint clock_timer_source = 0;
+void main_update_clock_timer(void);
 
 void main_setup_command_handlers(void)
 {
@@ -101,6 +112,8 @@ void main_cleanup(void)
 {
     ipc_cleanup();
     cmd_cleanup();
+    page_cache_cleanup();
+    g_free(clock_font);
 }
 
 gboolean main_next_page(gpointer data)
@@ -120,6 +133,17 @@ void main_run_page_timer(guint interval)
     }
     if (interval > 0)
         timeout_source = g_timeout_add_seconds(interval, main_next_page, NULL);
+}
+
+void main_update_clock_timer(void)
+{
+    if (!clock_show && clock_timer_source > 0) {
+        g_source_remove(clock_timer_source);
+        clock_timer_source = 0;
+    }
+    else if (clock_show && clock_timer_source == 0) {
+        clock_timer_source = g_timeout_add_seconds(page_interval, (GSourceFunc)main_refresh_display, NULL);
+    }
 }
 
 void main_render_window(cairo_t *cr, int width, int height)
@@ -149,6 +173,42 @@ void main_render_window(cairo_t *cr, int width, int height)
         cairo_rectangle(cr, 0.0f, 0.0f, w, h);
         cairo_fill(cr);
     }
+
+    main_render_clock(cr);
+}
+
+void main_render_clock(cairo_t *cr)
+{
+    DLOG("render clock: show: %d (x,y): (%d, %d), font: %s\n", clock_show, clock_position_x,
+            clock_position_y, clock_font);
+    if (!clock_show)
+        return;
+    PangoLayout *layout;
+    PangoFontDescription *fdesc;
+
+    char clock_buffer[32];
+    time_t t;
+    struct tm *lt;
+    t = time(NULL);
+    lt = localtime(&t);
+    strftime(clock_buffer, 32, "%H:%M", lt);
+
+    layout = pango_cairo_create_layout(cr);
+
+    if (clock_font)
+        fdesc = pango_font_description_from_string(clock_font);
+    else
+        fdesc = pango_font_description_from_string("Sans Bold 40px");
+
+    pango_layout_set_font_description(layout, fdesc);
+    pango_font_description_free(fdesc);
+
+    pango_layout_set_text(layout, clock_buffer, -1);
+    gdk_cairo_set_source_rgba(cr, &clock_color);
+
+    cairo_translate(cr, clock_position_x, clock_position_y);
+    pango_cairo_update_layout(cr, layout);
+    pango_cairo_show_layout(cr, layout);
 }
 
 void main_set_fullscreen(gboolean fullscreen)
@@ -191,6 +251,44 @@ gint command_set_handler(gint argc, gchar **argv)
             main_run_page_timer(page_interval);
             return 0;
         }
+    }
+    else if (g_strcmp0(argv[1], "clock-show") == 0) {
+        if (argc < 3)
+            return 1;
+        if (util_read_boolean(&clock_show, argv[2])) {
+            main_update_clock_timer();
+            main_refresh_display();
+            return 0;
+        }
+    }
+    else if (g_strcmp0(argv[1], "clock-color") == 0) {
+        if (argc < 3)
+            return 1;
+        if (gdk_rgba_parse(&clock_color, argv[2])) {
+            main_refresh_display();
+            return 0;
+        }
+    }
+    else if (g_strcmp0(argv[1], "clock-position") == 0) {
+        if (argc < 4)
+            return 1;
+        guint x, y;
+        if (util_read_uint(&x, argv[2]) &&
+                util_read_uint(&y, argv[3])) {
+            clock_position_x = x;
+            clock_position_y = y;
+            main_refresh_display();
+            return 0;
+        }
+    }
+    else if (g_strcmp0(argv[1], "clock-font") == 0) {
+        if (argc < 3)
+            return 1;
+        if (clock_font != NULL)
+            g_free(clock_font);
+        clock_font = g_strdup(argv[2]);
+        main_refresh_display();
+        return 0;
     }
 
     return 1;
