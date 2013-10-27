@@ -114,6 +114,7 @@ gboolean main_next_page(gpointer data)
 void main_run_page_timer(guint interval)
 {
     if (timeout_source > 0) {
+        DLOG("remove source\n");
         g_source_remove(timeout_source);
         timeout_source = 0;
     }
@@ -126,28 +127,28 @@ void main_render_window(cairo_t *cr, int width, int height)
     cairo_surface_t *surf = NULL;
     guint w, h;
     
-    if (!page_cache_fetch_page(&surf, &w, &h)) {
+    if (!page_cache_fetch_page(&surf, &w, &h) || surf == NULL) {
         cairo_set_source_rgb(cr, 0, 0, 0);
         cairo_rectangle(cr, 0, 0, width, height);
         cairo_fill(cr);
-        return;
     }
+    else {
+        double scale, tmp, ox, oy;
 
-    double scale, tmp, ox, oy;
+        scale = ((double)width)/((double)w);
+        tmp = ((double)height)/((double)h);
+        if (tmp < scale) scale = tmp;
 
-    scale = ((double)width)/((double)w);
-    tmp = ((double)height)/((double)h);
-    if (tmp < scale) scale = tmp;
+        ox = (width - scale * w) * 0.5f;
+        oy = (height - scale * h) * 0.5f;
 
-    ox = (width - scale * w) * 0.5f;
-    oy = (height - scale * h) * 0.5f;
+        cairo_translate(cr, ox, oy);
+        cairo_scale(cr, scale, scale);
 
-    cairo_translate(cr, ox, oy);
-    cairo_scale(cr, scale, scale);
-
-    cairo_set_source_surface(cr, surf, 0.0f, 0.0f);
-    cairo_rectangle(cr, 0.0f, 0.0f, w, h);
-    cairo_fill(cr);
+        cairo_set_source_surface(cr, surf, 0.0f, 0.0f);
+        cairo_rectangle(cr, 0.0f, 0.0f, w, h);
+        cairo_fill(cr);
+    }
 }
 
 void main_set_fullscreen(gboolean fullscreen)

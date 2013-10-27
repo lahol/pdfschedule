@@ -1,8 +1,8 @@
 CC := gcc
 PKG_CONFIG := pkg-config
 
-CFLAGS = -Wall -g `$(PKG_CONFIG) --cflags glib-2.0 gio-2.0 poppler poppler-glib poppler-cairo gtk+-3.0 cairo`
-LIBS = `$(PKG_CONFIG) --libs glib-2.0 gio-2.0 poppler poppler-glib poppler-cairo gtk+-3.0 cairo`
+CFLAGS += -Wall -g `$(PKG_CONFIG) --cflags glib-2.0 gio-2.0 poppler poppler-glib poppler-cairo gtk+-3.0 cairo`
+LIBS += `$(PKG_CONFIG) --libs glib-2.0 gio-2.0 poppler poppler-glib poppler-cairo gtk+-3.0 cairo`
 
 APPNAME := pdfschedule
 PREFIX := /usr

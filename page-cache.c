@@ -30,8 +30,9 @@ void page_cache_set_dimensions(guint width, guint height)
 void page_cache_free_page(struct PageCachePage *pg)
 {
     if (pg) {
-        if (pg->surface)
-            g_object_unref(pg->surface);
+        DLOG("unref: page_cache_free_page\n");
+        if (pg->surface != NULL)
+            cairo_surface_destroy(pg->surface);
         g_free(pg);
     }
 }
@@ -51,6 +52,7 @@ void page_cache_set_file(gchar *filename)
 void page_cache_load_document(void)
 {
     if (pc_doc != NULL) {
+        DLOG("unref: page_cache_load_document, doc\n");
         g_object_unref(G_OBJECT(pc_doc));
         pc_doc = NULL;
     }
@@ -131,6 +133,7 @@ void page_cache_render_page(struct PageCachePage *pg)
 
     cairo_t *cr = cairo_create(pg->surface);
     if (cr == NULL) {
+        DLOG("unref: page_cache_render_page, cr\n");
         g_object_unref(pg->surface);
         goto out;
     }
@@ -149,6 +152,7 @@ void page_cache_render_page(struct PageCachePage *pg)
     cairo_destroy(cr);
 
 out:
+    DLOG("unref: page_cache_render_page, page\n");
     g_object_unref(page);
 }
 
@@ -194,6 +198,7 @@ cairo_t *page_cache_get_current_page(void)
 void page_cache_cleanup(void)
 {
     page_cache_clear_cache();
+    DLOG("unref: page_cache_cleanup\n");
     if (pc_doc)
         g_object_unref(pc_doc);
     g_free(pc_doc_uri);
