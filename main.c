@@ -49,6 +49,14 @@ guint clock_position_x = 0;
 guint clock_position_y = 0;
 gchar *clock_font = NULL;
 guint clock_timer_source = 0;
+
+typedef enum {
+    ClockFormat24Hour,
+    ClockFormat12Hour
+} ClockFormat;
+
+ClockFormat clock_format = ClockFormat24Hour;
+
 void main_update_clock_timer(void);
 
 void main_setup_command_handlers(void)
@@ -191,7 +199,10 @@ void main_render_clock(cairo_t *cr)
     struct tm *lt;
     t = time(NULL);
     lt = localtime(&t);
-    strftime(clock_buffer, 32, "%H:%M", lt);
+    if (clock_format == ClockFormat24Hour)
+        strftime(clock_buffer, 32, "%H:%M", lt);
+    else
+        strftime(clock_buffer, 32, "%I:%M %P", lt);
 
     layout = pango_cairo_create_layout(cr);
 
@@ -289,6 +300,19 @@ gint command_set_handler(gint argc, gchar **argv)
         clock_font = g_strdup(argv[2]);
         main_refresh_display();
         return 0;
+    }
+    else if (g_strcmp0(argv[1], "clock-format") == 0) {
+        if (argc < 3)
+            return 1;
+        guint num;
+        if (util_read_uint(&num, argv[2])) {
+            if (num == 12)
+                clock_format = ClockFormat12Hour;
+            else
+                clock_format = ClockFormat24Hour;
+            main_refresh_display();
+            return 0;
+        }
     }
 
     return 1;
