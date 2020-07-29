@@ -6,7 +6,7 @@ fifo at /tmp/pdfscheduleipc.
 
 ## Commands ##
 ### load ###
-**load** _document_
+*load* _document_
 Loads a document.
 
 ### reload ###
