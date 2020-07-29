@@ -52,3 +52,7 @@ Font color for the clock. (see https://developer.gnome.org/gdk3/stable/gdk3-RGBA
 ### clock-font ###
 *clock-font* _pango-font-spec_
 Set font and size of the clock.
+
+### clock-format ###
+*clock-format* _format_
+Set the clock format. 12 for a 12-hour clock.
